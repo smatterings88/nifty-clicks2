@@ -1,0 +1,34 @@
+{
+  "name": "ghl-click-tracker",
+  "version": "1.0.0",
+  "description": "Node.js app to track clicks and update GoHighLevel contact custom fields",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "dev:https": "node server-https.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "echo \"No build step required for Node.js\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0"
+  },
+  "devDependencies": {
+    "mkcert": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "gohighlevel",
+    "api",
+    "tracking",
+    "express",
+    "nodejs"
+  ]
+}
