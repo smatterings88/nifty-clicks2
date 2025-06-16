@@ -205,6 +205,49 @@ const updateContactCustomField = async (contactId, fieldName, fieldValue) => {
   return data.contact || data;
 };
 
+const updateContactCustomFields = async (contactId, fields) => {
+  // Get field definitions to find the field IDs
+  const fieldDefinitions = await getCustomFieldDefinitions();
+  
+  const customFields = [];
+  
+  for (const field of fields) {
+    let customFieldId = null;
+    for (const [id, key] of Object.entries(fieldDefinitions)) {
+      if (key === field.fieldName) {
+        customFieldId = id;
+        break;
+      }
+    }
+    
+    if (!customFieldId) {
+      throw new Error(`Custom field "${field.fieldName}" not found. Available fields: ${Object.values(fieldDefinitions).join(', ')}`);
+    }
+    
+    customFields.push({
+      id: customFieldId,
+      value: field.value
+    });
+  }
+  
+  const url = `${config.GHL_BASE_URL}/contacts/${contactId}`;
+  
+  const updateData = {
+    customField: customFields
+  };
+  
+  console.log(`Updating contact ${contactId} with ${fields.length} custom fields:`, fields.map(f => `${f.fieldName}=${f.value}`).join(', '));
+  
+  const data = await retryWithBackoff(async () => {
+    return await makeApiRequest(url, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  });
+  
+  return data.contact || data;
+};
+
 const checkApiHealth = async () => {
   try {
     const url = `${config.GHL_BASE_URL}/locations/`;
@@ -233,6 +276,7 @@ module.exports = {
   getContactById,
   getCustomFieldValue,
   updateContactCustomField,
+  updateContactCustomFields,
   checkApiHealth,
   getCustomFieldDefinitions
 };
