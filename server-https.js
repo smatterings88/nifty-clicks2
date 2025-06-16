@@ -153,6 +153,97 @@ app.get('/track-click', async (req, res) => {
   }
 });
 
+// New endpoint to track opt-ins and update referral count
+app.get('/track-optin', async (req, res) => {
+  const { referrer } = req.query;
+
+  // Validate required parameters
+  if (!referrer) {
+    return res.status(400).json({
+      error: 'Missing required parameter: referrer',
+      message: 'Please provide a referrer parameter with the contact ID'
+    });
+  }
+
+  try {
+    console.log(`Processing opt-in tracking for contact ID: ${referrer}`);
+
+    // Get contact by ID directly
+    const contact = await ghlService.getContactById(referrer);
+
+    if (!contact) {
+      console.log(`No contact found for ID: ${referrer}`);
+      return res.status(404).json({
+        error: 'Contact not found',
+        message: `No contact found with ID: ${referrer}`
+      });
+    }
+
+    console.log(`Found contact: ${contact.id} - ${contact.name || contact.email}`);
+
+    // Get current referral count and increment
+    const currentCount = await ghlService.getCustomFieldValue(contact, 'pnl_referral_count');
+    const newCount = parseInt(currentCount) + 1;
+
+    console.log(`Updating referral count from ${currentCount} to ${newCount}`);
+
+    // Update the contact's referral count
+    const updatedContact = await ghlService.updateContactCustomField(
+      contact.id,
+      'pnl_referral_count',
+      newCount.toString()
+    );
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Referral count updated successfully',
+      data: {
+        contactId: contact.id,
+        contactName: contact.name || contact.email,
+        referrer: referrer,
+        previousCount: currentCount,
+        newCount: newCount,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error processing opt-in tracking:', error);
+
+    // Handle specific error types
+    if (error.name === 'GHLApiError') {
+      return res.status(error.status === 401 ? 401 : 500).json({
+        error: 'API Error',
+        message: error.message,
+        code: error.code
+      });
+    }
+
+    // Handle validation errors
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'Resource not found',
+        message: error.message
+      });
+    }
+
+    // Handle rate limit errors
+    if (error.message.includes('Rate limit')) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: error.message
+      });
+    }
+
+    // Generic error response
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while processing your request'
+    });
+  }
+});
+
 // Endpoint to get contact information (for testing)
 app.get('/contact/:contactId', async (req, res) => {
   const { contactId } = req.params;
@@ -168,6 +259,7 @@ app.get('/contact/:contactId', async (req, res) => {
     }
 
     const clickCount = await ghlService.getCustomFieldValue(contact, 'pnl_click_count');
+    const referralCount = await ghlService.getCustomFieldValue(contact, 'pnl_referral_count');
 
     res.json({
       success: true,
@@ -176,6 +268,7 @@ app.get('/contact/:contactId', async (req, res) => {
         name: contact.name,
         email: contact.email,
         clickCount: clickCount,
+        referralCount: referralCount,
         lastUpdated: contact.dateUpdated
       }
     });
@@ -253,6 +346,7 @@ const startHttpsServer = () => {
       console.log(`🚀 HTTP Server running on port ${PORT}`);
       console.log(`📍 Health check: http://localhost:${PORT}/health`);
       console.log(`📍 Track click: http://localhost:${PORT}/track-click?referrer=CONTACT_ID`);
+      console.log(`📍 Track opt-in: http://localhost:${PORT}/track-optin?referrer=CONTACT_ID`);
     });
     return;
   }
@@ -269,6 +363,7 @@ const startHttpsServer = () => {
       console.log(`🔒 HTTPS Server running on port ${HTTPS_PORT}`);
       console.log(`📍 Health check: https://localhost:${HTTPS_PORT}/health`);
       console.log(`📍 Track click: https://localhost:${HTTPS_PORT}/track-click?referrer=CONTACT_ID`);
+      console.log(`📍 Track opt-in: https://localhost:${HTTPS_PORT}/track-optin?referrer=CONTACT_ID`);
       
       // Validate configuration on startup
       const validation = config.validateConfiguration();
@@ -300,6 +395,7 @@ const startHttpsServer = () => {
       console.log(`🚀 HTTP Server running on port ${PORT}`);
       console.log(`📍 Health check: http://localhost:${PORT}/health`);
       console.log(`📍 Track click: http://localhost:${PORT}/track-click?referrer=CONTACT_ID`);
+      console.log(`📍 Track opt-in: http://localhost:${PORT}/track-optin?referrer=CONTACT_ID`);
     });
   }
 };
