@@ -187,26 +187,23 @@ app.get('/track-optin', async (req, res) => {
 
     console.log(`Updating referral count from ${currentCount} to ${newCount}`);
 
-    // Update both the referral count and referrer ID
-    const updatedContact = await ghlService.updateContactCustomFields(
+    // Update only the referral count
+    const updatedContact = await ghlService.updateContactCustomField(
       contact.id,
-      [
-        { fieldName: 'pnl_referral_count', value: newCount.toString() },
-        { fieldName: 'pnl_referrer_id', value: referrer }
-      ]
+      'pnl_referral_count',
+      newCount.toString()
     );
 
     // Return success response
     res.json({
       success: true,
-      message: 'Referral count and referrer ID updated successfully',
+      message: 'Referral count updated successfully',
       data: {
         contactId: contact.id,
         contactName: contact.name || contact.email,
         referrer: referrer,
         previousCount: currentCount,
         newCount: newCount,
-        referrerId: referrer,
         timestamp: new Date().toISOString()
       }
     });
