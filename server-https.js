@@ -244,6 +244,102 @@ app.get('/track-optin', async (req, res) => {
   }
 });
 
+// New endpoint to update referrer ID for a contact
+app.get('/update-referrer', async (req, res) => {
+  const { 'contact-id': contactId, referrer } = req.query;
+
+  // Validate required parameters
+  if (!contactId) {
+    return res.status(400).json({
+      error: 'Missing required parameter: contact-id',
+      message: 'Please provide a contact-id parameter with the contact ID'
+    });
+  }
+
+  if (!referrer) {
+    return res.status(400).json({
+      error: 'Missing required parameter: referrer',
+      message: 'Please provide a referrer parameter with the referrer contact ID'
+    });
+  }
+
+  try {
+    console.log(`Processing referrer update for contact ID: ${contactId} with referrer: ${referrer}`);
+
+    // Get contact by ID to verify it exists
+    const contact = await ghlService.getContactById(contactId);
+
+    if (!contact) {
+      console.log(`No contact found for ID: ${contactId}`);
+      return res.status(404).json({
+        error: 'Contact not found',
+        message: `No contact found with ID: ${contactId}`
+      });
+    }
+
+    console.log(`Found contact: ${contact.id} - ${contact.name || contact.email}`);
+
+    // Get current referrer ID value
+    const currentReferrerId = await ghlService.getCustomFieldValue(contact, 'pnl_referrer_id');
+
+    console.log(`Updating referrer ID from "${currentReferrerId}" to "${referrer}"`);
+
+    // Update the contact's referrer ID
+    const updatedContact = await ghlService.updateContactCustomField(
+      contact.id,
+      'pnl_referrer_id',
+      referrer
+    );
+
+    // Return success response
+    res.json({
+      success: true,
+      message: 'Referrer ID updated successfully',
+      data: {
+        contactId: contact.id,
+        contactName: contact.name || contact.email,
+        previousReferrerId: currentReferrerId,
+        newReferrerId: referrer,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error processing referrer update:', error);
+
+    // Handle specific error types
+    if (error.name === 'GHLApiError') {
+      return res.status(error.status === 401 ? 401 : 500).json({
+        error: 'API Error',
+        message: error.message,
+        code: error.code
+      });
+    }
+
+    // Handle validation errors
+    if (error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'Resource not found',
+        message: error.message
+      });
+    }
+
+    // Handle rate limit errors
+    if (error.message.includes('Rate limit')) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        message: error.message
+      });
+    }
+
+    // Generic error response
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while processing your request'
+    });
+  }
+});
+
 // Endpoint to get contact information (for testing)
 app.get('/contact/:contactId', async (req, res) => {
   const { contactId } = req.params;
@@ -349,6 +445,7 @@ const startHttpsServer = () => {
       console.log(`📍 Health check: http://localhost:${PORT}/health`);
       console.log(`📍 Track click: http://localhost:${PORT}/track-click?referrer=CONTACT_ID`);
       console.log(`📍 Track opt-in: http://localhost:${PORT}/track-optin?referrer=CONTACT_ID`);
+      console.log(`📍 Update referrer: http://localhost:${PORT}/update-referrer?contact-id=CONTACT_ID&referrer=REFERRER_ID`);
     });
     return;
   }
@@ -366,6 +463,7 @@ const startHttpsServer = () => {
       console.log(`📍 Health check: https://localhost:${HTTPS_PORT}/health`);
       console.log(`📍 Track click: https://localhost:${HTTPS_PORT}/track-click?referrer=CONTACT_ID`);
       console.log(`📍 Track opt-in: https://localhost:${HTTPS_PORT}/track-optin?referrer=CONTACT_ID`);
+      console.log(`📍 Update referrer: https://localhost:${HTTPS_PORT}/update-referrer?contact-id=CONTACT_ID&referrer=REFERRER_ID`);
       
       // Validate configuration on startup
       const validation = config.validateConfiguration();
@@ -398,6 +496,7 @@ const startHttpsServer = () => {
       console.log(`📍 Health check: http://localhost:${PORT}/health`);
       console.log(`📍 Track click: http://localhost:${PORT}/track-click?referrer=CONTACT_ID`);
       console.log(`📍 Track opt-in: http://localhost:${PORT}/track-optin?referrer=CONTACT_ID`);
+      console.log(`📍 Update referrer: http://localhost:${PORT}/update-referrer?contact-id=CONTACT_ID&referrer=REFERRER_ID`);
     });
   }
 };
